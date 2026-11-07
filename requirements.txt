@@ -1,0 +1,7 @@
+gymnasium>=1.0.0
+minigrid>=3.2.0
+pygame>=2.5.0
+matplotlib>=3.8.0
+pillow>=10.0.0
+numpy>=1.26.0
+
