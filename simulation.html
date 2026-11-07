@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Military Base Autonomous Rover: Live Simulation</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0b0f19;
+      color: #e2e8f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      padding: 16px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .header {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-bottom: 2px solid #06b6d4;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      background: #164e63;
+      color: #22d3ee;
+      border: 1px solid #0891b2;
+    }
+    .status-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      background: #451a03;
+      color: #fde047;
+      border: 1px solid #b45309;
+    }
+    .status-badge.active { background: #082f49; color: #38bdf8; border-color: #0284c7; }
+    .status-badge.success { background: #064e3b; color: #4ade80; border-color: #16a34a; }
+    .status-badge.failed { background: #450a0a; color: #f87171; border-color: #dc2626; }
+    .title { font-size: 16px; font-weight: bold; color: #cffafe; letter-spacing: 0.5px; }
+    .subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+    .btn-group { display: flex; gap: 6px; }
+    .btn {
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-primary { background: #0891b2; color: #fff; }
+    .btn-primary:hover { background: #06b6d4; }
+    .btn-secondary { background: #1e293b; color: #94a3b8; border-color: #334155; }
+    .btn-secondary:hover { color: #f1f5f9; background: #334155; }
+    .btn.active { background: #0891b2; color: #fff; border-color: #22d3ee; }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 7fr 5fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: bold;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #1f2937;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .canvas-container {
+      background: #030712;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    canvas { display: block; max-width: 100%; border-radius: 4px; }
+
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .telemetry-item {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .telemetry-label { font-size: 9px; color: #64748b; text-transform: uppercase; }
+    .telemetry-val { font-size: 13px; font-weight: bold; color: #38bdf8; margin-top: 2px; }
+
+    .state-box {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .bit-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 6px;
+      text-align: center;
+    }
+    .bit-cell {
+      background: #030712;
+      border: 1px solid #1e293b;
+      padding: 4px;
+      border-radius: 4px;
+    }
+
+    .gauge-box { margin-bottom: 12px; }
+    .gauge-item { margin-bottom: 8px; }
+    .gauge-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      margin-bottom: 3px;
+      color: #94a3b8;
+    }
+    .gauge-bar-bg {
+      background: #030712;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid #1e293b;
+    }
+    .gauge-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.2s ease;
+    }
+
+    .event-log {
+      height: 110px;
+      background: #030712;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 10px;
+      overflow-y: auto;
+      line-height: 1.4;
+      color: #94a3b8;
+    }
+    .log-entry { margin-bottom: 3px; }
+    .log-time { color: #06b6d4; }
+    .log-success { color: #4ade80; font-weight: bold; }
+    .log-fail { color: #f87171; font-weight: bold; }
+
+    .modal-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(3, 7, 18, 0.88);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .modal-hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div style="font-size: 24px;">🤖</div>
+      <div>
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
+          <span class="header-badge">UGV-01 TACTICAL HUD</span>
+          <span id="liveStatusBadge" class="status-badge">READY // STANDBY</span>
+        </div>
+        <div class="title">MILITARY BASE ROVER: REAL-TIME SIMULATION</div>
+        <div class="subtitle">Hierarchical Reinforcement Learning (SMDP Q-Learning vs. Baselines)</div>
+      </div>
+    </div>
+
+    <!-- Mode and Seed controls -->
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <div class="btn-group">
+        <button id="btnSmdp" class="btn active" onclick="setMode('smdp')">SMDP HRL (OURS)</button>
+        <button id="btnRandom" class="btn btn-secondary" onclick="setMode('random')">RANDOM MGR</button>
+        <button id="btnFlat" class="btn btn-secondary" onclick="setMode('flat')">FLAT Q-LEARN</button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 10px; color: #94a3b8;">MAP:</span>
+        <select id="seedSelect" onchange="changeSeed()" style="background:#0f172a; border:1px solid #334155; color:#38bdf8; padding:4px 8px; border-radius:4px; font-family:inherit; font-size:11px;">
+          <option value="42">Layout Seed 42</option>
+          <option value="101">Layout Seed 101</option>
+          <option value="7">Layout Seed 7</option>
+          <option value="15">Layout Seed 15</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- Left: Tactical Compound Map -->
+    <div>
+      <div class="card">
+        <div class="card-title">
+          <span>Compound Tactical Grid (6x6)</span>
+          <span style="font-size: 10px; color: #94a3b8;">
+            <span style="color:#3b82f6;">●</span> Sector 1 &nbsp;
+            <span style="color:#f59e0b;">●</span> Blast Gate &nbsp;
+            <span style="color:#10b981;">●</span> Sector 2
+          </span>
+        </div>
+
+        <div class="canvas-container">
+          <canvas id="gridCanvas" width="450" height="450"></canvas>
+
+          <!-- Overlay Modal (shown only on completion) -->
+          <div id="modalOverlay" class="modal-overlay modal-hidden">
+            <div id="modalIcon" style="font-size: 36px; margin-bottom: 8px;">🎯</div>
+            <div id="modalTitle" style="font-size: 16px; font-weight: bold; color: #4ade80; margin-bottom: 6px;">MISSION ACCOMPLISHED</div>
+            <div id="modalDesc" style="font-size: 11px; color: #cbd5e1; max-width: 260px; margin-bottom: 14px;">Mainframe terminal reached in 12 steps.</div>
+            <button class="btn btn-primary" onclick="resetSim()">REPLAY MISSION</button>
+          </div>
+        </div>
+
+        <!-- Controls toolbar -->
+        <div class="controls-bar">
+          <div class="btn-group">
+            <button id="btnPlayPause" class="btn btn-primary" onclick="togglePlay()">
+              <span id="playIcon">▶</span> <span id="playText">PLAY MISSION</span>
+            </button>
+            <button class="btn btn-secondary" onclick="stepSim()">⏭ STEP</button>
+            <button class="btn btn-secondary" onclick="resetSim()">↺ RESET</button>
+          </div>
+
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <span style="font-size: 10px; color: #94a3b8; margin-right: 4px;">SPEED:</span>
+            <button id="spd1" class="btn active" onclick="setSpeed(1)">1x</button>
+            <button id="spd2" class="btn btn-secondary" onclick="setSpeed(2)">2x</button>
+            <button id="spd4" class="btn btn-secondary" onclick="setSpeed(4)">4x</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Telemetry & Status -->
+    <div>
+      <div class="card" style="margin-bottom: 14px;">
+        <div class="card-title">Live Telemetry &amp; Manager Decision</div>
+
+        <div class="telemetry-grid">
+          <div class="telemetry-item">
+            <div class="telemetry-label">Mission Step</div>
+            <div class="telemetry-val" id="telStep">0 / 60</div>
+          </div>
+          <div class="telemetry-item">
+            <div class="telemetry-label">Chassis Coordinates</div>
+            <div class="telemetry-val" id="telPos">(1, 3) · SOUTH</div>
+          </div>
+          <div class="telemetry-item">
+            <div class="telemetry-label">Security Keycard</div>
+            <div class="telemetry-val" id="telKey" style="color: #f59e0b;">NOT CARRIED</div>
+          </div>
+          <div class="telemetry-item">
+            <div class="telemetry-label">Blast Gate</div>
+            <div class="telemetry-val" id="telGate" style="color: #ef4444;">LOCKED</div>
+          </div>
+        </div>
+
+        <!-- Current Skill Box -->
+        <div class="state-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #94a3b8;">
+            <span>ACTIVE MACRO-SKILL</span>
+            <span id="badgeSkill" style="background:#164e63; color:#22d3ee; padding:2px 6px; border-radius:3px; font-weight:bold;">NONE</span>
+          </div>
+          <div id="telSkillName" style="font-size: 13px; font-weight: bold; color: #67e8f9; margin-top: 4px;">STANDBY</div>
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 6px; border-top: 1px solid #1e293b; padding-top: 4px;">
+            <span>Skill Duration (&tau;): <strong id="telTau" style="color:#38bdf8;">0</strong> steps</span>
+            <span>Primitive: <strong id="telAction" style="color:#38bdf8;">IDLE</strong></span>
+          </div>
+        </div>
+
+        <!-- Abstract State Box -->
+        <div class="state-box">
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8;">
+            <span>ABSTRACT STATE ID: <strong id="telStateId" style="color:#38bdf8;">S0</strong></span>
+            <span>S = (c &lt;&lt; 2) | (g &lt;&lt; 1) | r</span>
+          </div>
+          <div class="bit-row">
+            <div class="bit-cell">
+              <div style="font-size: 9px; color:#64748b;">Keycard (c)</div>
+              <div id="bitC" style="font-size: 12px; font-weight: bold;">0</div>
+            </div>
+            <div class="bit-cell">
+              <div style="font-size: 9px; color:#64748b;">Gate Open (g)</div>
+              <div id="bitG" style="font-size: 12px; font-weight: bold;">0</div>
+            </div>
+            <div class="bit-cell">
+              <div style="font-size: 9px; color:#64748b;">Sector 2 (r)</div>
+              <div id="bitR" style="font-size: 12px; font-weight: bold;">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q-Values for active state -->
+        <div class="gauge-box">
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-bottom: 6px;">
+            <span>SMDP Q-VALUES (CURRENT STATE)</span>
+            <span id="bestOptionLabel" style="color:#22d3ee; font-weight:bold;">Optimal: &omega;0</span>
+          </div>
+
+          <div class="gauge-item">
+            <div class="gauge-label">
+              <span>&omega;0: Retrieve Keycard</span>
+              <strong id="qVal0" style="color:#38bdf8;">1.188</strong>
+            </div>
+            <div class="gauge-bar-bg">
+              <div id="qBar0" class="gauge-bar-fill" style="background:#0284c7; width: 85%;"></div>
+            </div>
+          </div>
+
+          <div class="gauge-item">
+            <div class="gauge-label">
+              <span>&omega;1: Unlock Blast Gate</span>
+              <strong id="qVal1" style="color:#f59e0b;">1.135</strong>
+            </div>
+            <div class="gauge-bar-bg">
+              <div id="qBar1" class="gauge-bar-fill" style="background:#d97706; width: 80%;"></div>
+            </div>
+          </div>
+
+          <div class="gauge-item">
+            <div class="gauge-label">
+              <span>&omega;2: Access Terminal</span>
+              <strong id="qVal2" style="color:#10b981;">1.130</strong>
+            </div>
+            <div class="gauge-bar-bg">
+              <div id="qBar2" class="gauge-bar-fill" style="background:#059669; width: 80%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event Log Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>Mission Event Log</span>
+          <button onclick="clearLog()" style="background:none; border:none; color:#64748b; font-size:9px; cursor:pointer; font-family:inherit;">CLEAR</button>
+        </div>
+        <div id="eventLog" class="event-log">
+          <div class="log-entry"><span class="log-time">[00:00]</span> UGV simulation ready. Press PLAY MISSION to begin.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ==============================================================================
+// Pure JavaScript Simulation Engine (Zero External Dependencies)
+// ==============================================================================
+let currentMode = 'smdp';
+let currentSeed = 42;
+let isPlaying = false;
+let playSpeed = 1;
+let animTimer = null;
+
+let simStep = 0;
+let skillTau = 0;
+let lastAction = "STANDBY";
+let missionFinished = false;
+
+let rover = { x: 1, y: 3, dir: 1, carrying: false };
+let keyPos = { x: 1, y: 1, collected: false };
+let gatePos = { x: 2, y: 2, open: false };
+let goalPos = { x: 4, y: 4 };
+let currentOption = 0;
+let breadcrumbs = [];
+
+const Q_TABLE = [
+  [1.188, 1.135, 1.130], // S0: card=0, gate=0, sec1 -> prefer w0
+  [0.000, 0.000, 0.000], // S1
+  [0.000, 0.000, 0.000], // S2
+  [0.000, 0.000, 0.000], // S3
+  [1.097, 1.117, 1.071], // S4: card=1, gate=0, sec1 -> prefer w1
+  [0.000, 0.000, 0.000], // S5
+  [0.940, 0.958, 0.965], // S6: card=1, gate=1, sec1 -> prefer w2
+  [0.000, 0.000, 0.000]  // S7
+];
+
+const SKILL_NAMES = ["Retrieve Keycard", "Unlock Blast Gate", "Access Terminal"];
+
+const WALLS = [
+  [0,0],[0,1],[0,2],[0,3],[0,4],[0,5],
+  [5,0],[5,1],[5,2],[5,3],[5,4],[5,5],
+  [1,0],[2,0],[3,0],[4,0],
+  [1,5],[2,5],[3,5],[4,5],
+  [2,1],[2,3],[2,4]
+];
+
+function isWall(x, y) {
+  return WALLS.some(([wx, wy]) => wx === x && wy === y);
+}
+
+const DIRS = [
+  { dx: 1, dy: 0, name: "EAST" },
+  { dx: 0, dy: 1, name: "SOUTH" },
+  { dx: -1, dy: 0, name: "WEST" },
+  { dx: 0, dy: -1, name: "NORTH" }
+];
+
+function getManagerState() {
+  let c = rover.carrying ? 1 : 0;
+  let g = gatePos.open ? 1 : 0;
+  let r = rover.x > gatePos.x ? 1 : 0;
+  return (c << 2) | (g << 1) | r;
+}
+
+function findPath(start, target, targetWalkable) {
+  let queue = [[start.x, start.y, []]];
+  let visited = new Set([start.x + "," + start.y]);
+
+  while (queue.length > 0) {
+    let [cx, cy, path] = queue.shift();
+    if (targetWalkable && cx === target.x && cy === target.y) return path;
+    if (!targetWalkable && Math.abs(cx - target.x) + Math.abs(cy - target.y) === 1) return path;
+
+    for (let i = 0; i < 4; i++) {
+      let nx = cx + DIRS[i].dx;
+      let ny = cy + DIRS[i].dy;
+      let key = nx + "," + ny;
+
+      if (nx >= 0 && nx < 6 && ny >= 0 && ny < 6 && !visited.has(key)) {
+        let isGate = (nx === gatePos.x && ny === gatePos.y);
+        let canWalk = !isWall(nx, ny);
+        if (isGate && !gatePos.open) canWalk = false;
+        if (nx === target.x && ny === target.y && targetWalkable) canWalk = true;
+
+        if (canWalk) {
+          visited.add(key);
+          queue.push([nx, ny, [...path, { x: nx, y: ny, dir: i }]]);
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function resetSim() {
+  stopPlay();
+  simStep = 0;
+  skillTau = 0;
+  lastAction = "STANDBY";
+  missionFinished = false;
+
+  if (currentSeed === 42) {
+    rover = { x: 1, y: 3, dir: 1, carrying: false };
+    keyPos = { x: 1, y: 1, collected: false };
+    gatePos = { x: 2, y: 2, open: false };
+    goalPos = { x: 4, y: 4 };
+  } else if (currentSeed === 101) {
+    rover = { x: 1, y: 4, dir: 3, carrying: false };
+    keyPos = { x: 1, y: 2, collected: false };
+    gatePos = { x: 2, y: 3, open: false };
+    goalPos = { x: 4, y: 1 };
+  } else if (currentSeed === 7) {
+    rover = { x: 1, y: 2, dir: 0, carrying: false };
+    keyPos = { x: 1, y: 4, collected: false };
+    gatePos = { x: 2, y: 1, open: false };
+    goalPos = { x: 4, y: 3 };
+  } else {
+    rover = { x: 1, y: 3, dir: 1, carrying: false };
+    keyPos = { x: 1, y: 1, collected: false };
+    gatePos = { x: 2, y: 2, open: false };
+    goalPos = { x: 4, y: 4 };
+  }
+
+  breadcrumbs = [{ x: rover.x, y: rover.y }];
+  document.getElementById('modalOverlay').classList.add('modal-hidden');
+  updateStatusBadge("READY // STANDBY", "");
+
+  logEvent(`Reset compound layout to Seed ${currentSeed}. Controller: ${currentMode.toUpperCase()}`);
+  updateUI();
+  drawCanvas();
+}
+
+function stepSim() {
+  if (missionFinished) return;
+  simStep++;
+  let state = getManagerState();
+
+  if (currentMode === 'smdp') {
+    let qVals = Q_TABLE[state] || [0, 0, 0];
+    let option = qVals.indexOf(Math.max(...qVals));
+    if (currentOption !== option) {
+      currentOption = option;
+      skillTau = 0;
+      logEvent(`Manager dispatched Option &omega;${option}: [${SKILL_NAMES[option]}]`);
+    }
+    skillTau++;
+    executeSkill(option);
+  } else if (currentMode === 'random') {
+    if (skillTau === 0 || skillTau >= 6 || Math.random() < 0.25) {
+      currentOption = Math.floor(Math.random() * 3);
+      skillTau = 0;
+      logEvent(`Random Manager chose Option &omega;${currentOption}: [${SKILL_NAMES[currentOption]}]`);
+    }
+    skillTau++;
+    executeSkill(currentOption);
+  } else if (currentMode === 'flat') {
+    currentOption = -1;
+    skillTau = 0;
+    let actions = ["TURN LEFT", "TURN RIGHT", "FORWARD", "PICKUP", "TOGGLE"];
+    let act = actions[Math.floor(Math.random() * actions.length)];
+    if (act === "TURN LEFT") {
+      rover.dir = (rover.dir + 3) % 4;
+      lastAction = "TURN LEFT";
+    } else if (act === "TURN RIGHT") {
+      rover.dir = (rover.dir + 1) % 4;
+      lastAction = "TURN RIGHT";
+    } else if (act === "FORWARD") {
+      let nx = rover.x + DIRS[rover.dir].dx;
+      let ny = rover.y + DIRS[rover.dir].dy;
+      if (nx >= 0 && nx < 6 && ny >= 0 && ny < 6 && !isWall(nx, ny)) {
+        if (!(nx === gatePos.x && ny === gatePos.y && !gatePos.open)) {
+          rover.x = nx; rover.y = ny;
+          lastAction = "FORWARD";
+        } else {
+          lastAction = "BUMPED CLOSED GATE";
+        }
+      } else {
+        lastAction = "BUMPED WALL";
+      }
+    } else if (act === "PICKUP") {
+      let nx = rover.x + DIRS[rover.dir].dx;
+      let ny = rover.y + DIRS[rover.dir].dy;
+      if (nx === keyPos.x && ny === keyPos.y && !rover.carrying) {
+        rover.carrying = true;
+        keyPos.collected = true;
+        lastAction = "PICKUP KEYCARD";
+        logEvent("Flat agent picked up keycard by chance!");
+      } else {
+        lastAction = "PICKUP (EMPTY)";
+      }
+    } else if (act === "TOGGLE") {
+      let nx = rover.x + DIRS[rover.dir].dx;
+      let ny = rover.y + DIRS[rover.dir].dy;
+      if (nx === gatePos.x && ny === gatePos.y && rover.carrying) {
+        gatePos.open = true;
+        lastAction = "TOGGLE GATE";
+        logEvent("Flat agent unlocked gate by chance!");
+      } else {
+        lastAction = "TOGGLE (NO EFFECT)";
+      }
+    }
+  }
+
+  breadcrumbs.push({ x: rover.x, y: rover.y });
+
+  // Terminal reach check
+  if (rover.x === goalPos.x && rover.y === goalPos.y) {
+    missionFinished = true;
+    stopPlay();
+    updateStatusBadge("ACCOMPLISHED", "success");
+    logEvent(`<span class="log-success">[SUCCESS]</span> Command Mainframe breached in ${simStep} steps!`);
+    showModal(true, `Command Mainframe breached successfully in ${simStep} steps.`);
+  } else if (simStep >= 55) {
+    missionFinished = true;
+    stopPlay();
+    updateStatusBadge("FAILED // TIMEOUT", "failed");
+    logEvent(`<span class="log-fail">[FAILED]</span> Operation exceeded step budget (55 steps).`);
+    showModal(false, "Step budget exceeded before completing the sequence.");
+  }
+
+  updateUI();
+  drawCanvas();
+}
+
+function executeSkill(option) {
+  let target = null;
+  let targetWalkable = false;
+
+  if (option === 0) {
+    if (rover.carrying) { lastAction = "IDLE (CARD HELD)"; return; }
+    target = keyPos;
+    targetWalkable = false;
+  } else if (option === 1) {
+    if (gatePos.open) { lastAction = "IDLE (GATE OPEN)"; return; }
+    if (!rover.carrying) {
+      lastAction = "BLOCKED (NO CARD)";
+      logEvent("Skill 1 blocked: Rover lacks clearance keycard.");
+      return;
+    }
+    target = gatePos;
+    targetWalkable = false;
+  } else if (option === 2) {
+    target = goalPos;
+    targetWalkable = true;
+  }
+
+  let path = findPath(rover, target, targetWalkable);
+  if (!path) {
+    lastAction = "BLOCKED (OBSTRUCTED)";
+    logEvent("Path to sub-goal is obstructed.");
+    return;
+  }
+
+  if (path.length === 0) {
+    let dx = target.x - rover.x;
+    let dy = target.y - rover.y;
+    let reqDir = DIRS.findIndex(d => d.dx === dx && d.dy === dy);
+
+    if (reqDir !== -1 && rover.dir !== reqDir) {
+      if ((rover.dir + 1) % 4 === reqDir) {
+        rover.dir = (rover.dir + 1) % 4;
+        lastAction = "TURN RIGHT";
+      } else {
+        rover.dir = (rover.dir + 3) % 4;
+        lastAction = "TURN LEFT";
+      }
+    } else {
+      if (option === 0 && !rover.carrying) {
+        rover.carrying = true;
+        keyPos.collected = true;
+        lastAction = "PICKUP KEYCARD";
+        logEvent("<span class='log-success'>[ACTION]</span> Keycard acquired! Security clearance granted.");
+      } else if (option === 1 && !gatePos.open) {
+        gatePos.open = true;
+        lastAction = "TOGGLE GATE (OPENED)";
+        logEvent("<span class='log-success'>[ACTION]</span> Blast gate unlocked and opened.");
+      } else {
+        lastAction = "INTERACT";
+      }
+    }
+  } else {
+    let nextStep = path[0];
+    let reqDir = nextStep.dir;
+    if (rover.dir === reqDir) {
+      rover.x = nextStep.x;
+      rover.y = nextStep.y;
+      lastAction = "MOVE FORWARD";
+    } else if ((rover.dir + 1) % 4 === reqDir) {
+      rover.dir = (rover.dir + 1) % 4;
+      lastAction = "TURN RIGHT";
+    } else {
+      rover.dir = (rover.dir + 3) % 4;
+      lastAction = "TURN LEFT";
+    }
+  }
+}
+
+function drawCanvas() {
+  const canvas = document.getElementById('gridCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  const cSize = W / 6;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#030712";
+  ctx.fillRect(0, 0, W, H);
+
+  // Sector 1 background
+  ctx.fillStyle = "rgba(59, 130, 246, 0.12)";
+  ctx.fillRect(cSize, cSize, cSize * 1, cSize * 4);
+
+  // Sector 2 background
+  ctx.fillStyle = "rgba(16, 185, 129, 0.12)";
+  ctx.fillRect(cSize * 3, cSize, cSize * 2, cSize * 4);
+
+  // Grid lines
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 6; i++) {
+    ctx.beginPath(); ctx.moveTo(i * cSize, 0); ctx.lineTo(i * cSize, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * cSize); ctx.lineTo(W, i * cSize); ctx.stroke();
+  }
+
+  // Walls
+  WALLS.forEach(([wx, wy]) => {
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(wx * cSize + 2, wy * cSize + 2, cSize - 4, cSize - 4);
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(wx * cSize + 2, wy * cSize + 2, cSize - 4, cSize - 4);
+
+    if (wx === 2) {
+      ctx.strokeStyle = "rgba(245, 158, 11, 0.25)";
+      ctx.lineWidth = 1;
+      for (let s = 0; s < cSize; s += 8) {
+        ctx.beginPath();
+        ctx.moveTo(wx * cSize + s, wy * cSize);
+        ctx.lineTo(wx * cSize + s + 8, wy * cSize + cSize);
+        ctx.stroke();
+      }
+    }
+  });
+
+  // Breadcrumbs trail
+  if (breadcrumbs.length > 1) {
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(breadcrumbs[0].x * cSize + cSize/2, breadcrumbs[0].y * cSize + cSize/2);
+    for (let p of breadcrumbs) {
+      ctx.lineTo(p.x * cSize + cSize/2, p.y * cSize + cSize/2);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Keycard
+  if (!keyPos.collected) {
+    let kx = keyPos.x * cSize + cSize/2;
+    let ky = keyPos.y * cSize + cSize/2;
+    ctx.fillStyle = "rgba(251, 191, 36, 0.25)";
+    ctx.beginPath(); ctx.arc(kx, ky, cSize * 0.35, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.font = (cSize * 0.42) + "px sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("🗝️", kx, ky);
+  }
+
+  // Blast Gate
+  let gx = gatePos.x * cSize + cSize/2;
+  let gy = gatePos.y * cSize + cSize/2;
+  if (gatePos.open) {
+    ctx.fillStyle = "rgba(16, 185, 129, 0.2)";
+    ctx.fillRect(gatePos.x * cSize + 4, gatePos.y * cSize + 4, cSize - 8, cSize - 8);
+    ctx.strokeStyle = "#10b981"; ctx.lineWidth = 2;
+    ctx.strokeRect(gatePos.x * cSize + 4, gatePos.y * cSize + 4, cSize - 8, cSize - 8);
+    ctx.font = (cSize * 0.4) + "px sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("🟢", gx, gy);
+  } else {
+    ctx.fillStyle = "rgba(239, 68, 68, 0.25)";
+    ctx.fillRect(gatePos.x * cSize + 4, gatePos.y * cSize + 4, cSize - 8, cSize - 8);
+    ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2;
+    ctx.strokeRect(gatePos.x * cSize + 4, gatePos.y * cSize + 4, cSize - 8, cSize - 8);
+    ctx.font = (cSize * 0.4) + "px sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("🚪", gx, gy);
+  }
+
+  // Command Mainframe Goal
+  let tx = goalPos.x * cSize + cSize/2;
+  let ty = goalPos.y * cSize + cSize/2;
+  ctx.fillStyle = "rgba(16, 185, 129, 0.25)";
+  ctx.fillRect(goalPos.x * cSize + 4, goalPos.y * cSize + 4, cSize - 8, cSize - 8);
+  ctx.strokeStyle = "#10b981"; ctx.lineWidth = 2;
+  ctx.strokeRect(goalPos.x * cSize + 4, goalPos.y * cSize + 4, cSize - 8, cSize - 8);
+  ctx.font = (cSize * 0.45) + "px sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("🖥️", tx, ty);
+
+  // Rover Chassis & Heading
+  let rx = rover.x * cSize + cSize/2;
+  let ry = rover.y * cSize + cSize/2;
+  let fovAngle = [0, Math.PI/2, Math.PI, -Math.PI/2][rover.dir];
+
+  // FOV cone
+  ctx.fillStyle = "rgba(56, 189, 248, 0.18)";
+  ctx.beginPath();
+  ctx.moveTo(rx, ry);
+  ctx.arc(rx, ry, cSize * 0.85, fovAngle - 0.4, fovAngle + 0.4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Rover circle
+  ctx.fillStyle = rover.carrying ? "#f59e0b" : "#0284c7";
+  ctx.beginPath(); ctx.arc(rx, ry, cSize * 0.32, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = rover.carrying ? "#fbbf24" : "#38bdf8";
+  ctx.lineWidth = 2.5; ctx.stroke();
+
+  // Compass pointer
+  let px = rx + Math.cos(fovAngle) * (cSize * 0.38);
+  let py = ry + Math.sin(fovAngle) * (cSize * 0.38);
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(px, py); ctx.stroke();
+
+  // Rover Icon
+  ctx.font = (cSize * 0.35) + "px sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("🤖", rx, ry);
+}
+
+function updateUI() {
+  document.getElementById('telStep').textContent = simStep + " / 60";
+  document.getElementById('telPos').textContent = "(" + rover.x + ", " + rover.y + ") · " + DIRS[rover.dir].name;
+
+  if (rover.carrying) {
+    document.getElementById('telKey').textContent = "EQUIPPED (GRANTED)";
+    document.getElementById('telKey').style.color = "#4ade80";
+  } else {
+    document.getElementById('telKey').textContent = "NOT CARRIED";
+    document.getElementById('telKey').style.color = "#f59e0b";
+  }
+
+  if (gatePos.open) {
+    document.getElementById('telGate').textContent = "UNLOCKED (OPEN)";
+    document.getElementById('telGate').style.color = "#4ade80";
+  } else {
+    document.getElementById('telGate').textContent = "LOCKED";
+    document.getElementById('telGate').style.color = "#ef4444";
+  }
+
+  if (currentOption >= 0) {
+    document.getElementById('badgeSkill').textContent = "ω" + currentOption;
+    document.getElementById('telSkillName').textContent = SKILL_NAMES[currentOption].toUpperCase();
+  } else {
+    document.getElementById('badgeSkill').textContent = "NONE";
+    document.getElementById('telSkillName').textContent = "MONOLITHIC PRIMITIVE";
+  }
+
+  document.getElementById('telTau').textContent = skillTau;
+  document.getElementById('telAction').textContent = lastAction;
+
+  let state = getManagerState();
+  document.getElementById('telStateId').textContent = "S" + state;
+  document.getElementById('bitC').textContent = (state >> 2) & 1;
+  document.getElementById('bitG').textContent = (state >> 1) & 1;
+  document.getElementById('bitR').textContent = state & 1;
+
+  let qVals = Q_TABLE[state] || [0, 0, 0];
+  document.getElementById('qVal0').textContent = qVals[0].toFixed(3);
+  document.getElementById('qVal1').textContent = qVals[1].toFixed(3);
+  document.getElementById('qVal2').textContent = qVals[2].toFixed(3);
+
+  let maxQ = Math.max(1.25, Math.max(...qVals));
+  document.getElementById('qBar0').style.width = Math.max(5, (qVals[0] / maxQ) * 100) + "%";
+  document.getElementById('qBar1').style.width = Math.max(5, (qVals[1] / maxQ) * 100) + "%";
+  document.getElementById('qBar2').style.width = Math.max(5, (qVals[2] / maxQ) * 100) + "%";
+
+  let best = qVals.indexOf(Math.max(...qVals));
+  document.getElementById('bestOptionLabel').textContent = "Optimal: ω" + best + " (" + SKILL_NAMES[best] + ")";
+}
+
+function updateStatusBadge(text, type) {
+  let badge = document.getElementById('liveStatusBadge');
+  badge.textContent = text;
+  badge.className = "status-badge" + (type ? " " + type : "");
+}
+
+function showModal(success, desc) {
+  let modal = document.getElementById('modalOverlay');
+  let icon = document.getElementById('modalIcon');
+  let title = document.getElementById('modalTitle');
+  let descElem = document.getElementById('modalDesc');
+
+  modal.classList.remove('modal-hidden');
+  if (success) {
+    icon.textContent = "🎯";
+    title.textContent = "MISSION ACCOMPLISHED";
+    title.style.color = "#4ade80";
+    descElem.textContent = desc;
+  } else {
+    icon.textContent = "⚠️";
+    title.textContent = "MISSION FAILED";
+    title.style.color = "#f87171";
+    descElem.textContent = desc;
+  }
+}
+
+function logEvent(msg) {
+  let log = document.getElementById('eventLog');
+  let timeStr = "[00:" + (simStep < 10 ? "0" : "") + simStep + "]";
+  let item = document.createElement('div');
+  item.className = "log-entry";
+  item.innerHTML = "<span class='log-time'>" + timeStr + "</span> " + msg;
+  log.appendChild(item);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('eventLog').innerHTML = '';
+}
+
+function togglePlay() {
+  if (isPlaying) stopPlay(); else startPlay();
+}
+
+function startPlay() {
+  if (missionFinished) resetSim();
+  isPlaying = true;
+  document.getElementById('playIcon').textContent = "⏸";
+  document.getElementById('playText').textContent = "PAUSE";
+  updateStatusBadge("RUNNING // ACTIVE", "active");
+
+  let interval = 500 / playSpeed;
+  animTimer = setInterval(stepSim, interval);
+}
+
+function stopPlay() {
+  isPlaying = false;
+  document.getElementById('playIcon').textContent = "▶";
+  document.getElementById('playText').textContent = "RESUME";
+  if (animTimer) clearInterval(animTimer);
+  animTimer = null;
+}
+
+function setSpeed(spd) {
+  playSpeed = spd;
+  document.getElementById('spd1').className = spd === 1 ? "btn active" : "btn btn-secondary";
+  document.getElementById('spd2').className = spd === 2 ? "btn active" : "btn btn-secondary";
+  document.getElementById('spd4').className = spd === 4 ? "btn active" : "btn btn-secondary";
+  if (isPlaying) { stopPlay(); startPlay(); }
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btnSmdp').className = mode === 'smdp' ? "btn active" : "btn btn-secondary";
+  document.getElementById('btnRandom').className = mode === 'random' ? "btn active" : "btn btn-secondary";
+  document.getElementById('btnFlat').className = mode === 'flat' ? "btn active" : "btn btn-secondary";
+  resetSim();
+}
+
+function changeSeed() {
+  currentSeed = parseInt(document.getElementById('seedSelect').value);
+  resetSim();
+}
+
+// Initial draw
+resetSim();
+</script>
+</body>
+</html>
+
