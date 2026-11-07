@@ -181,15 +181,3 @@ For graduate-level expansion or publication submission, consider these extension
 * **Human-in-the-Loop Override:** In accordance with International Humanitarian Law (IHL) regarding autonomous systems, manual operator overrides supersede automated manager sequencing at all times.
 
 ---
-
-## Citation & Academic Attribution
-
-```bibtex
-@misc{military_base_hrl_2026,
-  title={Autonomous Base Logistics and Security Rover: Game-Level Skill Hierarchy via SMDP Q-Learning},
-  author={Unit 5 RL Research Group},
-  year={2026},
-  howpublished={\url{https://github.com/your-username/military-base-hrl}}
-}
-```
-
